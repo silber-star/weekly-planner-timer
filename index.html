@@ -633,19 +633,18 @@ function isoWeek(d) { const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(),
 
 /* ---------- App constants (defaults, not user data) ---------- */
 let HH = 40;                                                   // height of one hour row in px (fit to screen in fitHours)
-const COLORS = ['slate', 'blue', 'green', 'teal', 'violet', 'rose', 'amber', 'orange', 'lime', 'red',
-  'salmon', 'peach', 'butter', 'leaf', 'aqua', 'lilac', 'pink', 'brick', 'tan', 'khaki', 'moss', 'steel', 'denim', 'mauve', 'orchid', 'coral', 'indigo', 'plum'];
+const COLORS = ['red', 'coral', 'salmon', 'brick', 'peach', 'orange', 'tan',   /* 7 per row = the colour popup's rows: warm → green → blue → purple/pink */
+  'amber', 'butter', 'khaki', 'lime', 'leaf', 'green', 'moss',
+  'teal', 'aqua', 'steel', 'blue', 'denim', 'indigo', 'slate',
+  'violet', 'lilac', 'mauve', 'plum', 'orchid', 'pink', 'rose'];
 const DEFAULT_TYPES = [
-  { id: 'sleep', name: '잠', color: 'slate' }, { id: 'school', name: '학교', color: 'blue' },
-  { id: 'study', name: '공부', color: 'green' }, { id: 'tutor', name: '과외', color: 'teal' },
-  { id: 'drama', name: '드라마 리허설', color: 'violet' }, { id: 'show', name: '공연', color: 'rose' },
-  { id: 'service', name: '활동·봉사', color: 'amber' }, { id: 'free', name: 'Free time', color: 'orange' },
-  { id: 'workout', name: '운동', color: 'lime' }];
-const TYPE_ICONS = { sleep: '💤', school: '🎓', study: '✏️', tutor: '📐', drama: '🎭', show: '🎤', service: '🤝', free: '☕', workout: '🏃' };
+  { id: 'sleep', name: '잠', color: 'slate' }, { id: 'study', name: '공부', color: 'green' },
+  { id: 'free', name: '휴식', color: 'orange' }, { id: 'workout', name: '운동', color: 'lime' }];
+const TYPE_ICONS = { sleep: '💤', study: '✏️', free: '☕', workout: '🏃' };
 const iconOf = t => (t.icon != null ? t.icon : TYPE_ICONS[t.id] || '');
 const EVENT_CATS = { service: { name: '봉사', color: 'amber' }, show: { name: '공연', color: 'rose' }, exam: { name: '시험', color: 'red' },
   school: { name: '학교 행사', color: 'blue' }, personal: { name: '개인', color: 'violet' } };
-const CLASS_COLORS = { 'English': 'blue', 'Math': 'green', 'Science': 'red', 'Personal': 'violet' };
+const CLASS_COLORS = {};   // e.g. { 'Math': 'green' } — task class → colour
 const NOTION = 'Notion';
 const TASK_DS = 'collection://YOUR-NOTION-DATA-SOURCE-ID';   // your own Notion tasks database
 const TASK_STATUSES = ['시작 전', '진행 중', '완료'];
@@ -1004,7 +1003,7 @@ function planNow() {
   const on = list.filter(it => it.start <= now);
   return { cur: on.find(it => it.typeId === 'study') || on[0] || null, next: list.find(it => it.start > now) || null, now };
 }
-const PLAN_ALIASES = [['화학', 'chem'], ['micro', '미시', '경제'], ['토플', 'toefl'], ['수학', 'algebra', '과외', '문제집'], ['영어', 'english', '1984'], ['rosetta', '헝가리'], ['thesis', '논문']];
+const PLAN_ALIASES = [];   // e.g. [['math', '수학'], ['english', '영어']] — words in a block title that map to a timer subject
 function planSubject(title) {
   const t = String(title || '').toLowerCase(), subs = tmActive();
   const hit = subs.find(s => t.includes(s.name.toLowerCase())); if (hit) return hit;
@@ -1155,7 +1154,7 @@ function openNewType() {
   $('#ntName').focus();
 }
 /* Typed time fields: accepts 8:15, 08:15, 815, 0815, 8, 24:00 */
-const GOAL_STUDY = 120;   /* 학교·과외 제외 공부 하루 2시간 (고정 일정.md 목표) */
+const GOAL_STUDY = 120;   /* daily study goal (minutes) */
 const fmtDur = m => `${Math.floor(m / 60)}:${pad(Math.round(m % 60))}`;
 const fmtT = hm;
 function parseTime(s) {
@@ -1240,7 +1239,7 @@ function openEvent(id) {
   $('#eEdit', m).onclick = () => openEventEditor(e);
   armConfirm($('#eDel', m), '정말 삭제?', async () => { try { await Store.delDoc('events/' + e.id); closeModal(); toast('일정을 삭제했어'); } catch (err) { toast(dbErrText(err)); } });
   const tb = $('#eToBlock', m);
-  if (tb) tb.onclick = () => { const tid = e.category === 'show' ? 'show' : e.category === 'service' ? 'service' : (S.selType || 'study');
+  if (tb) tb.onclick = () => { const tid = types().some(t => t.id === e.category) ? e.category : (S.selType || 'study');
     if (!weekDates().includes(e.date)) { toast('지금 보고 있는 주의 일정만 블록으로 넣을 수 있어'); return; }
     snapshotUndo(); S.week.blocks.push({ id: uid('b'), typeId: types().some(t => t.id === tid) ? tid : types()[0].id, title: e.title, date: e.date, start: e.start, end: e.end ?? Math.min(e.start + 60, 1440) });
     saveWeek(); closeModal(); renderBoard(); renderTotals(); toast('시간표에 넣었어'); };
@@ -1309,7 +1308,7 @@ function openSettings() {
     m.querySelector('.mb').innerHTML = `
       <div class="set-sec"><h4>블록 종류</h4><p class="note">새 블록 메뉴와 같은 순서·3열 배치야. 네모를 누르면 색을 골라.</p><div class="set-grid">${D.blockTypes.map((t, i) => `<div class="set-cell" data-cell="${i}"><span class="gh" data-tdrag="${i}" title="끌어서 순서 바꾸기" aria-label="끌어서 순서 바꾸기">⠿</span><button type="button" class="sw lg c-${t.color}" data-tpick="${i}" aria-label="색 고르기"></button><input class="ico" data-ti="${i}" value="${esc(iconOf(t))}" maxlength="4" aria-label="아이콘"><input class="grow" data-tn="${i}" value="${esc(t.name)}" aria-label="이름"><button class="x" data-tdel="${i}" aria-label="삭제">×</button></div>`).join('')}</div>
         <button class="btn sm" data-tadd style="align-self:flex-start">＋ 블록 종류</button></div>
-      <div class="set-sec"><h4>매주 반복 (고정 일정)</h4><p class="note">학교·잠처럼 매주 같은 블록. 여기서 고치면 모든 주에 반영돼. 시간이 '?'였던 건 추정값이니 맞게 고쳐 줘.</p>
+      <div class="set-sec"><h4>매주 반복 (고정 일정)</h4><p class="note">잠·수업처럼 매주 같은 블록. 여기서 고치면 모든 주에 반영돼. 시간이 '?'였던 건 추정값이니 맞게 고쳐 줘.</p>
         ${D.recurring.map((r, i) => `<div class="set-row"><select data-rd="${i}" aria-label="요일">${DOW.map((d, k) => `<option value="${k}"${k === r.dow ? ' selected' : ''}>${d}</option>`).join('')}</select><select data-rt="${i}" aria-label="종류">${tOpts(r.typeId)}</select><input class="grow" data-rn="${i}" value="${esc(r.title || '')}" placeholder="제목" aria-label="제목">${timeInput(`data-rs="${i}"`, r.start, '시작')}${timeInput(`data-re="${i}"`, r.end, '끝')}<button class="x" data-rdel="${i}" aria-label="삭제">×</button></div>`).join('')}
         <button class="btn sm" data-radd style="align-self:flex-start">＋ 반복 블록</button></div>
       <div class="set-sec"><h4>보이는 시간</h4><p class="note">시간표에 보일 범위. 이 범위가 화면 높이에 딱 맞게 늘어나.</p>
@@ -1342,7 +1341,7 @@ function openSettings() {
     const cellAt = (x, y) => { const c = document.elementFromPoint(x, y); return c && c.closest('[data-cell]'); };
     const move = ev => { $$('.set-cell.drop', mb).forEach(c => c.classList.remove('drop')); const c = cellAt(ev.clientX, ev.clientY); if (c) { to = +c.dataset.cell; if (to !== from) c.classList.add('drop'); } };
     const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); removeEventListener('pointercancel', up);
-      if (to !== from) { snap(); D.blockTypes.splice(to, 0, D.blockTypes.splice(from, 1)[0]); } draw(); };
+      if (to !== from) { snap(); const bt = D.blockTypes; [bt[from], bt[to]] = [bt[to], bt[from]]; } draw(); };
     addEventListener('pointermove', move); addEventListener('pointerup', up); addEventListener('pointercancel', up);
   });
   const colorPop = (btn, i) => {   /* one swatch per block type; the full palette opens as a popup */
@@ -1865,7 +1864,7 @@ function tmSubjectSheet(id, back) {
   const s = id ? TM.settings.subjects.find(x => x.id === id) : null, used = new Set(tmActive().map(x => x.color));
   let color = s ? s.color : TM_PALETTE.find(c => !used.has(c)) || TM_PALETTE[0];
   const m = tmDlg(`<header class="mh"><h2>${s ? '과목 편집' : '과목 추가'}</h2><button class="x" data-close>닫기</button></header>
-    <div class="mb"><label>이름<input id="tsName" maxlength="30" value="${esc(s ? s.name : '')}" placeholder="예: Chemistry" autocomplete="off"></label>
+    <div class="mb"><label>이름<input id="tsName" maxlength="30" value="${esc(s ? s.name : '')}" placeholder="예: Math" autocomplete="off"></label>
       <div class="lbl">색</div><div class="tm-sw" id="tsSw">${tmSortSw(TM_SWATCHES.includes(color) ? TM_SWATCHES : [color, ...TM_SWATCHES]).map(c => `<button type="button" class="tm-swb${c === color ? ' on' : ''}" style="--c:${c}" data-c="${c}" aria-label="색 ${c}"></button>`).join('')}<label class="tm-swb tm-custom" title="직접 고르기"><input type="color" id="tsCustom" value="${/^#[0-9a-f]{6}$/i.test(color) ? color : '#888888'}" aria-label="색 직접 고르기"></label></div></div>
     <footer class="mf">${s ? '<button class="btn danger" id="tsArch">보관하기</button>' : ''}<span class="sp"></span><button class="btn" data-close>취소</button><button class="btn primary" id="tsSave">저장</button></footer>`, 'tm-high');
   $('#tsSw', m).onclick = e => { const b = e.target.closest('[data-c]'); if (!b) return; color = b.dataset.c; $$('.tm-swb', m).forEach(x => x.classList.toggle('on', x === b)); };

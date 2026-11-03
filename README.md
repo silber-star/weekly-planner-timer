@@ -14,6 +14,6 @@ A single-file weekly time-grid planner with a study timer. One row = 1 hour, one
 It is built to run as a claude.ai Artifact (shared `db` + Notion connector). Opened as a plain file it runs in preview mode and stores data in localStorage only.
 
 - Notion 과제 연동을 쓰려면 `index.html`의 `TASK_DS`를 본인 Notion 데이터 소스 주소로 바꾸세요.
-- 학교 방학 표시는 `SCHOOL_BREAKS`, 과목 색은 `CLASS_COLORS`, 타이머 기본 과목은 `TM_DEFAULT`에서 바꿉니다.
+- 방학·휴일 표시는 `SCHOOL_BREAKS`, 과제 분류별 색은 `CLASS_COLORS`, 블록 제목 → 타이머 과목 연결은 `PLAN_ALIASES`, 타이머 기본 과목은 `TM_DEFAULT`, 기본 블록 종류는 `DEFAULT_TYPES`에서 바꿉니다. 모두 빈 값/예시로 시작합니다.
 
-개인 일정·계정 데이터는 이 저장소에 없습니다 (이름·과목·학교 일정·Notion 주소는 예시 값으로 바꿨습니다).
+개인 일정·계정 데이터는 이 저장소에 없습니다. 이름·과목·학교 일정·반복 블록·Notion 주소를 모두 비운 백지 상태이고, 블록 종류(잠·공부·휴식·운동)와 타이머 과목(Math·English·Science)은 예시입니다. 설정에서 직접 바꾸세요.
