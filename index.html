@@ -666,7 +666,7 @@ const types = () => (cfg().blockTypes && cfg().blockTypes.length ? cfg().blockTy
 const keepBrush = () => { if (!types().some(t => t.id === S.selType)) S.selType = types()[0].id; };
 const typeOf = id => types().find(t => t.id === id) || { id, name: '블록', color: 'slate' };
 const snapMin = () => 10;                                      // one grid square
-const RS = () => (cfg().dayStart ?? 6) * 60, RE = () => (cfg().dayEnd ?? 27) * 60;   // visible range in minutes; past 24 = the early hours of the next day, stored on the same date (end > 1440)
+const RS = () => (cfg().dayStart ?? 6) * 60, RE = () => (cfg().dayEnd ?? 30) * 60;   // visible range in minutes; past 24 = the early hours of the next day, stored on the same date (end > 1440)
 const weekDates = () => Array.from({ length: 7 }, (_, i) => ymd(addDays(S.weekStart, i)));
 const weekPath = (start = S.weekStart) => 'weeks/' + ymd(start);
 /* db snapshots are frozen, so always work on a deep copy */
@@ -975,6 +975,7 @@ function openHelp() {
       <dt>블록 만들기</dt><dd>빈 칸을 드래그. 한 칸이 10분, 한 줄이 1시간이라 왼쪽에서 오른쪽으로 채워져. 양 끝을 끌면 길이가 바뀌어. 종류는 위 새 블록에서 골라.</dd>
       <dt>여러 개 삭제</dt><dd>위 '선택'을 누르고 시간표를 드래그하면 박스에 닿은 블록이 골라져. 블록을 누르면 하나씩 더하거나 빼. 삭제는 아래 막대에서, Shift+드래그도 같아. 반복 블록은 이번 주에서만 빠져.</dd>
       <dt>옮기기·길이</dt><dd>블록을 끌면 이동, 왼쪽·오른쪽 끝을 끌면 길이 조절.</dd>
+      <dt>복사</dt><dd>Option(Alt)을 누른 채 블록을 다른 요일로 끌면 복사돼. 또는 블록 위에서 ⌘C(선택한 블록이 있으면 그것들), 붙일 요일 위에 마우스를 두고 ⌘V — 같은 시간으로 붙어.</dd>
       <dt>자동 정리</dt><dd>겹치는 공부 블록을 빈 시간으로 옮겨. 바꿀 내용을 먼저 보여 주고, 되돌릴 수 있어.</dd>
       <dt>편집</dt><dd>블록을 누르면 제목·시간·메모를 고칠 수 있어. 시간은 0815처럼 타이핑.</dd>
       <dt>매주 반복</dt><dd>테두리 없는 블록은 고정 일정이야. 한 주만 바꾸면 그 주에만 적용되고 테두리가 생겨.</dd>
@@ -1302,7 +1303,7 @@ function openBriefing(id) {
 function ensureConfig() { if (!S.config) S.config = clone(cfg()); S.config.recurring = S.config.recurring || []; S.config.habits = S.config.habits || []; S.config.blockTypes = S.config.blockTypes || clone(DEFAULT_TYPES); }
 function openSettings() {
   ensureConfig(); const D = clone(S.config), orig = clone(S.config);
-  D.dayStart = D.dayStart ?? 6; D.dayEnd = D.dayEnd ?? 27; orig.dayStart = D.dayStart; orig.dayEnd = D.dayEnd;
+  D.dayStart = D.dayStart ?? 6; D.dayEnd = D.dayEnd ?? 30; orig.dayStart = D.dayStart; orig.dayEnd = D.dayEnd;
   const draw = () => {
     const tOpts = sel => D.blockTypes.map(t => `<option value="${esc(t.id)}"${t.id === sel ? ' selected' : ''}>${esc(t.name)}</option>`).join('');
     m.querySelector('.mb').innerHTML = `
@@ -1312,7 +1313,7 @@ function openSettings() {
         ${D.recurring.map((r, i) => `<div class="set-row"><select data-rd="${i}" aria-label="요일">${DOW.map((d, k) => `<option value="${k}"${k === r.dow ? ' selected' : ''}>${d}</option>`).join('')}</select><select data-rt="${i}" aria-label="종류">${tOpts(r.typeId)}</select><input class="grow" data-rn="${i}" value="${esc(r.title || '')}" placeholder="제목" aria-label="제목">${timeInput(`data-rs="${i}"`, r.start, '시작')}${timeInput(`data-re="${i}"`, r.end, '끝')}<button class="x" data-rdel="${i}" aria-label="삭제">×</button></div>`).join('')}
         <button class="btn sm" data-radd style="align-self:flex-start">＋ 반복 블록</button></div>
       <div class="set-sec"><h4>보이는 시간</h4><p class="note">시간표에 보일 범위. 이 범위가 화면 높이에 딱 맞게 늘어나.</p>
-        <div class="set-row"><input type="number" min="0" max="23" data-ds value="${D.dayStart}" aria-label="시작 시" style="width:70px">시부터<input type="number" min="1" max="27" data-de value="${D.dayEnd}" aria-label="끝 시" style="width:70px">시까지 <span class="note">(25~27 = 다음 날 새벽 1~3시)</span></div></div>
+        <div class="set-row"><input type="number" min="0" max="23" data-ds value="${D.dayStart}" aria-label="시작 시" style="width:70px">시부터<input type="number" min="1" max="30" data-de value="${D.dayEnd}" aria-label="끝 시" style="width:70px">시까지 <span class="note">(25~30 = 다음 날 새벽 1~6시)</span></div></div>
       <div class="set-sec"><h4>습관</h4>${D.habits.map((h, i) => `<div class="set-row"><input class="ico" data-hi="${i}" value="${esc(h.icon || '')}" maxlength="4" placeholder="✓" aria-label="아이콘"><input class="grow" data-hn="${i}" value="${esc(h.name)}" aria-label="습관"><button class="x" data-hdel="${i}" aria-label="삭제">×</button></div>`).join('')}
         <button class="btn sm" data-hadd style="align-self:flex-start">＋ 습관</button></div>`;
   };
@@ -1324,7 +1325,7 @@ function openSettings() {
     if (d.ti) D.blockTypes[d.ti].icon = e.target.value; if (d.hi) D.habits[d.hi].icon = e.target.value;
     if (d.tn) D.blockTypes[d.tn].name = e.target.value; if (d.rn) D.recurring[d.rn].title = e.target.value; if (d.hn) D.habits[d.hn].name = e.target.value; });
   mb.addEventListener('change', e => { const d = e.target.dataset, v = e.target.value;
-    if (d.rd) D.recurring[d.rd].dow = +v; if (d.rt) D.recurring[d.rt].typeId = v; if ('ds' in d) D.dayStart = Math.max(0, Math.min(23, +v || 0)); if ('de' in d) D.dayEnd = Math.max(1, Math.min(27, +v || 27));
+    if (d.rd) D.recurring[d.rd].dow = +v; if (d.rt) D.recurring[d.rt].typeId = v; if ('ds' in d) D.dayStart = Math.max(0, Math.min(23, +v || 0)); if ('de' in d) D.dayEnd = Math.max(1, Math.min(30, +v || 30));
     if (d.rs || d.re) { const t = parseTime(v); if (t != null) D.recurring[d.rs || d.re][d.rs ? 'start' : 'end'] = t; } });
   /* undo (⌘Z / Ctrl+Z) for list changes made in this window: add, delete, reorder, colour. Typing in a field keeps the browser's own undo. */
   const hist = [], snap = () => { hist.push(JSON.stringify({ blockTypes: D.blockTypes, habits: D.habits, recurring: D.recurring })); if (hist.length > 50) hist.shift(); };
@@ -1435,7 +1436,7 @@ function onDown(e) {
     return;
   }
   const mode = blk ? (e.target.closest('.hz-t') ? 'top' : e.target.closest('.hz-b') ? 'bot' : 'move') : 'create';
-  drag = { mode, col, date: col.dataset.date, x0: e.clientX, y0: e.clientY, m0: minAt(col, e.clientX, e.clientY), armed: !touch, active: false, touch, el: blk, item: blk ? findItem(blk.dataset.id) : null };
+  drag = { mode, col, date: col.dataset.date, x0: e.clientX, y0: e.clientY, m0: minAt(col, e.clientX, e.clientY), armed: !touch, active: false, touch, el: blk, copy: e.altKey && mode === 'move', item: blk ? findItem(blk.dataset.id) : null };
   if (touch) drag.timer = setTimeout(() => { if (!drag) return; drag.armed = true; activate(); try { navigator.vibrate && navigator.vibrate(8); } catch (_) {} }, 320);
   else e.preventDefault();
   addEventListener('pointermove', onMove); addEventListener('pointerup', onUp); addEventListener('pointercancel', endDrag);
@@ -1446,7 +1447,7 @@ function activate() {
   const t = typeOf(drag.mode === 'create' ? S.selType : drag.item.typeId), g = document.createElement('div');
   g.className = 'dragghost c-' + t.color; drag.col.appendChild(g); drag.ghost = g;
   if (drag.mode === 'create') { const s = snapF(drag.m0); drag.res = { date: drag.date, start: s, end: Math.min(RE(), s + snapMin()) }; }
-  else { drag.el.classList.add('drag'); drag.res = { date: drag.item.date, start: drag.item.start, end: drag.item.end }; }
+  else { if (!drag.copy) drag.el.classList.add('drag'); drag.res = { date: drag.item.date, start: drag.item.start, end: drag.item.end }; }
   drawGhost();
 }
 function drawGhost() { const r = drag.res, segs = segsOf(r.start, r.end); drag.ghost.innerHTML = `${segHTML(segs)}<div class="blk-in" style="${boxStyle(labelBox(segs))}">${hmr(r.start, r.end)}</div>`; }
@@ -1456,6 +1457,7 @@ function onMove(e) {
   if (!drag.armed) { if (Math.hypot(dx, dy) > 8) endDrag(); return; }
   if (!drag.active) { if (Math.hypot(dx, dy) < 6) return; activate(); }
   if (drag.mode === 'marquee') { marqueeTo(e); return; }
+  if (drag.mode === 'move' && e.altKey !== drag.copy) { drag.copy = e.altKey; drag.el.classList.toggle('drag', !drag.copy); }   /* hold Option/Alt = copy instead of move */
   const tc = drag.mode === 'move' ? colAtX(e.clientX) : drag.col, m = minAt(tc, e.clientX, e.clientY), sn = snapMin();
   if (drag.mode === 'create') {
     const a = magnet(snapF(Math.min(drag.m0, m)), drag.date), b = Math.max(a + sn, magnet(Math.min(RE(), Math.ceil(Math.max(drag.m0, m) / sn) * sn), drag.date));
@@ -1484,8 +1486,26 @@ function onUp() {
   if (d.mode === 'create') { createBlock(d.res.date, d.res.start, d.res.end); return; }
   const r = d.res;
   if (!r || (r.date === d.item.date && r.start === d.item.start && r.end === d.item.end)) { renderBoard(); return; }
+  if (d.copy) { pasteItems([{ ...d.item, date: r.date, start: r.start, end: r.end }]); return; }
   snapshotUndo(); applyItemChange(d.item, r); saveWeek(); renderBoard(); renderTotals();
   if (d.item.rec) toast('이번 주만 바꿨어 (매주 반복은 그대로)', '되돌리기', doUndo);
+}
+/* Copy/paste blocks: Option-drag copies in place; ⌘C copies the selected blocks (or the one under the pointer), ⌘V pastes on the day under the pointer at the same times. */
+function pasteItems(items) {
+  snapshotUndo();
+  for (const it of items) S.week.blocks.push({ id: uid('b'), typeId: it.typeId, title: it.title || '', note: it.note || '', date: it.date, start: it.start, end: it.end });
+  saveWeek(); renderBoard(); renderTotals(); toast(`${items.length}개 복사했어`, '되돌리기', doUndo);
+}
+function copyKeys(e) {
+  if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey || !$('#modalRoot').hidden || UI.view === 'timer' || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName || '')) return;
+  const k = e.key.toLowerCase();
+  if (k === 'c') {
+    const ids = S.sel.size ? [...S.sel] : S.hovBlk ? [S.hovBlk] : []; const its = ids.map(findItem).filter(Boolean);
+    if (!its.length) return; e.preventDefault(); S.clip = its; toast(`${its.length}개 복사됨 — 붙일 요일 위에 마우스를 두고 ⌘V`);
+  } else if (k === 'v') {
+    if (!S.clip || !S.clip.length || !S.hovDate || !weekDates().includes(S.hovDate)) return; e.preventDefault();
+    pasteItems(S.clip.map(it => ({ ...it, date: S.hovDate })));
+  }
 }
 function endDrag() {
   if (!drag) return; clearTimeout(drag.timer);
@@ -2013,6 +2033,8 @@ function wire() {
   setInterval(() => { tmTick(); if (TM.running && UI.view === 'timer' && new Date().getSeconds() % 30 === 0 && !TM.busy) renderTimer(); }, 1000);
   $('#palette').onclick = e => { if (e.target.closest('[data-newtype]')) { closePops(); openNewType(); return; } const b = e.target.closest('[data-type]'); if (!b) return; S.selType = b.dataset.type; closePops(); renderHeader(); };
   $('#gridRow').addEventListener('pointerdown', onDown);
+  $('#gridRow').addEventListener('pointermove', e => { const c = e.target.closest('.col'), b = e.target.closest('.blk'); S.hovDate = c ? c.dataset.date : null; S.hovBlk = b ? b.dataset.id : null; });
+  addEventListener('keydown', copyKeys);
   $('#adRow').onclick = e => { const k = e.target.closest('[data-tick]'), ev = e.target.closest('[data-ev]'), t = e.target.closest('[data-task]');
     if (k) { const task = S.tasks.find(x => x.id === k.dataset.tick); if (!task) return; if (!S.mcp) { toast('Notion 과제는 claude.ai에서 열었을 때만 바꿀 수 있어'); return; }
       if (task.status === '완료') setTaskStatus(task, task.prevStatus || '시작 전'); else { task.prevStatus = task.status; setTaskStatus(task, '완료'); } }
